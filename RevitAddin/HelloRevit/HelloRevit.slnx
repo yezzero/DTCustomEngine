@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="HelloRevit/HelloRevit.csproj" Id="de85d2ee-508b-4e1a-83ab-35bfd7bd9c8d">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+</Solution>

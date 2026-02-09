@@ -1,0 +1,40 @@
+# --- 1. Visual Studio (C# 빌드 부산물) ---
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.pdb
+*.cache
+
+# --- 2. Python (자동화 스크립트 부산물) ---
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# --- 3. Revit (백업 파일 무시) ---
+*.rvt
+*.*.rvt
+*.bak
+*.log
+_Revit_Source_/
+
+# --- 4. 결과물 제외 (Generated Assets) ---
+# 웹 뷰어 폴더 내의 모델 데이터는 매번 생성되므로 제외
+WebViewer/models/*.gltf
+WebViewer/models/*.bin
+WebViewer/models/*.json
+WebViewer/models/*.obj
+
+# 단, models 폴더 자체는 유지하고 싶다면 .gitkeep 사용 (선택)
+!WebViewer/models/.gitkeep
+
+# --- 5. 시스템 파일 ---
+.DS_Store
+Thumbs.db
+
+# --- 6. NuGet Packages (외부 라이브러리 제외) ---
+packages/
+**/packages/
+*.nupkg
