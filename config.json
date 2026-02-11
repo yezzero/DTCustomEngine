@@ -2,12 +2,15 @@
   "_comment": "출력 파일명·출력 폴더·Revit 경로는 이 파일만 수정하면 됩니다. pipeline.py 실행 시 WebViewer/models 등에 복사됩니다.",
   "revit": {
     "exePath": "C:\\Program Files\\Autodesk\\Revit 2024\\Revit.exe",
-    "targetRvtFile": "C:\\Users\\yeyeo\\Desktop\\DTCustomEngine\\SampleModels\\건축.rvt"
+    "targetRvtFile": "C:\\Users\\yeyeo\\Desktop\\DTCustomEngine\\SampleModels\\Snowdon.rvt"
   },
   "output": {
     "dir": "C:\\Users\\yeyeo\\Desktop\\DTCustomEngine\\WebViewer\\models",
     "gltf": "model.gltf",
     "gltfBin": "model.bin",
     "semanticTwinJson": "semantic_twin.json"
+  },
+  "build": {
+    "solutionPath": "RevitAddin/HelloRevit/HelloRevit.slnx"
   }
 }

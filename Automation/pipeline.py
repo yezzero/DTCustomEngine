@@ -5,6 +5,7 @@ import time
 import json
 import pyautogui
 import pygetwindow as gw
+import sys
 
 # ==========================================
 # [설정] 프로젝트 루트의 config.json 에서 일괄 로드
@@ -17,36 +18,74 @@ def load_config():
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
-web_server_path = os.path.join(PROJECT_ROOT, "WebViewer", "models")
-CONFIG_FOR_WEB = "config.json"   # WebViewer/models 에 복사할 이름
+# ==========================================
+# [기능 0] C# 애드인 빌드 (dotnet CLI)
+# ==========================================
+def build_addin(config):
+    print(f"[0/4] C# 애드인 빌드 및 Config 갱신 (dotnet)...")
+    
+    # config.json에서 솔루션 경로 가져오기
+    solution_rel_path = config['build']['solutionPath']
+    solution_path = os.path.join(PROJECT_ROOT, solution_rel_path)
+
+    # 명령어: dotnet build -c Debug
+    # (이 과정에서 .csproj 설정에 의해 config.json이 DLL 폴더로 자동 복사됨)
+    command = ["dotnet", "build", solution_path, "-c", "Debug"]
+
+    try:
+        # 빌드 실행 (로그가 너무 길면 stdout=subprocess.DEVNULL 추가)
+        subprocess.run(command, check=True)
+        print("   - ✅ 빌드 성공 (DLL 및 config.json 갱신 완료)")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ 빌드 실패! (Exit Code: {e.returncode})")
+        print("   - 소스코드나 config.json 경로를 확인해주세요.")
+        sys.exit(1)
+    except FileNotFoundError:
+        print("❌ 오류: 'dotnet' 명령어를 찾을 수 없습니다.")
+        sys.exit(1)
 
 # ==========================================
 # [자동화 로직 시작]
 # ==========================================
-
 def run_pipeline():
     print("------------------------------------------------")
     print("🚀 BIM 자동화 파이프라인을 가동합니다.")
     print("------------------------------------------------")
 
     config = load_config()
-    revit_path = config["revit"]["exePath"]
+
+    # ★ [Step 0] 여기서 빌드를 먼저 합니다!
+    # 그래야 최신 코드가 반영되고, 최신 config.json이 DLL 옆으로 갑니다.
+    build_addin(config)
+
+    # 설정 변수 로드
+    # (config.json 구조에 따라 exePath가 없으면 installPath + Revit.exe 조합 사용)
+    if "exePath" in config["revit"]:
+        revit_path = config["revit"]["exePath"]
+    else:
+        revit_path = os.path.join(config["revit"]["installPath"], "Revit.exe")
+
     target_rvt_file = config["revit"]["targetRvtFile"]
     out = config["output"]
+    
+    # 웹 뷰어 경로 설정
+    web_server_path = os.path.join(PROJECT_ROOT, "WebViewer", "models")
+    CONFIG_FOR_WEB = "config.json"
     files_to_move = [out["gltf"], out["gltfBin"], out["semanticTwinJson"]]
 
-    # 웹뷰어가 config를 읽을 수 있도록 복사 (Revit 애드인은 DLL 옆 config.json 사용)
+    # [Step 1] 웹뷰어용 Config 복사
     os.makedirs(web_server_path, exist_ok=True)
     shutil.copy(CONFIG_PATH, os.path.join(web_server_path, CONFIG_FOR_WEB))
+    print(f"[1/4] 웹 뷰어 설정 파일 복사 완료")
 
-    # 1. 청소 단계 (Clean) — WebViewer/models 기존 출력 파일만 삭제
-    print(f"[1/4] 기존 데이터 청소 중...")
+    # [Step 2] 청소 (기존 모델 파일 삭제)
+    print(f"   - 기존 데이터 청소 중...")
     for file_name in files_to_move:
         web_file = os.path.join(web_server_path, file_name)
         if os.path.exists(web_file):
             os.remove(web_file)
 
-    # 2. Revit 실행 (Execution)
+    # [Step 3] Revit 실행
     print(f"[2/4] Revit 실행 중... (유령 모드 👻)")
     print(f"   - 대상: {target_rvt_file}")
 
@@ -54,64 +93,41 @@ def run_pipeline():
         print(f"❌ 오류: RVT 파일을 찾을 수 없습니다: {target_rvt_file}")
         return
 
-    # subprocess를 이용해 Revit을 켭니다.
-    # Revit은 켜지자마자 우리가 만든 DLL(AutoRunner)에 의해 작업 후 자동 종료됩니다.
     process = subprocess.Popen([revit_path, target_rvt_file])
 
-    # ========================================================
-    # ★ 보안 경고창 자동 처리 (Auto-Clicker)
-    # ========================================================
+    # --- 보안 경고창 처리 ---
     print("   - 🛡️ 보안 경고창 감시 시작 (최대 60초 대기)...")
-    
-    # 60초 동안 반복하면서 창이 뜨는지 확인
     for i in range(30): 
-        time.sleep(2)  # 2초 간격으로 확인
-        
-        # Revit 2024의 보안 창 제목 (한글/영문 모두 대응)
-        # 보통 "보안 - 서명되지 않은 애드인" 또는 "Security - Unsigned Add-in"
+        time.sleep(2)
         target_titles = ["보안 - ", "Security - "]
-        
-        # 현재 열린 모든 창 가져오기
         windows = gw.getAllTitles()
         found_security_window = False
         
         for title in windows:
-            # 창 제목에 '보안'이나 'Security'가 포함되어 있다면
             if any(t in title for t in target_titles):
                 print(f"   - 🚨 보안 경고창 발견! ({title})")
-                
-                # 해당 창을 맨 앞으로 가져오기
                 try:
                     win = gw.getWindowsWithTitle(title)[0]
-                    if not win.isActive:
-                        win.activate()
-                except:
-                    pass
+                    if not win.isActive: win.activate()
+                except: pass
                 
-                time.sleep(1.0) # 창이 뜨고 나서 확실하게 입력을 받을 때까지 1초 대기
-
-                # 왼쪽으로 3번 이동 (제일 왼쪽 버튼이 '항상 로드'임)
+                time.sleep(1.0)
                 pyautogui.press(['left', 'left', 'left']) 
                 time.sleep(0.5)
                 pyautogui.press('enter')
-                
-                print("   - 👉 '항상 로드' (방향키+엔터) 입력 완료.")
+                print("   - 👉 '항상 로드' 입력 완료.")
                 found_security_window = True
                 break
         
-        if found_security_window:
-            break
-            
-        # (옵션) 만약 Revit이 이미 로딩이 끝나서 꺼졌다면 루프 종료
-        if process.poll() is not None:
-            break
+        if found_security_window: break
+        if process.poll() is not None: break
 
-    # 3. 대기 (Wait)
-    print(f"[3/4] 데이터 추출 대기 중... (Revit이 꺼질 때까지 기다립니다)")
-    process.wait()  # Revit이 꺼질 때까지 파이썬은 여기서 멈춰있습니다.
+    # [Step 4] 대기
+    print(f"[3/4] 데이터 추출 대기 중... (Revit 종료 대기)")
+    process.wait()
     print("   - Revit 종료 감지됨!")
 
-    # 4. 확인 (Revit이 config.output.dir = WebViewer/models 에 직접 저장했으므로 이동 없음)
+    # [Step 5] 결과 확인
     print(f"[4/4] 결과물 확인 중... ({web_server_path})")
     success_count = 0
     for file_name in files_to_move:
@@ -123,13 +139,12 @@ def run_pipeline():
             print(f"   - ⚠️ 파일이 없습니다: {file_name}")
 
     print("------------------------------------------------")
-    if success_count >= 2:  # gltf + bin + json 중 최소 2개 이상이면 성공
+    if success_count >= 2:
         print("🎉 자동화 성공! 웹 뷰어를 확인하세요.")
     else:
-        print(f"💥 일부 실패! 출력 경로({web_server_path})에 error.txt가 있는지 확인하세요.")
+        print(f"💥 일부 실패! 출력 경로({web_server_path})의 error.txt를 확인하세요.")
     print("------------------------------------------------")
 
 if __name__ == "__main__":
     run_pipeline()
-    # 창이 바로 꺼지는 걸 방지하기 위해 입력 대기
     input("엔터 키를 누르면 종료합니다...")

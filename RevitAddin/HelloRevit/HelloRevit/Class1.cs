@@ -40,6 +40,7 @@ namespace MyRevitExtractor
             // 패밀리 파일이나 템플릿이면 무시
             if (doc.IsFamilyDocument) return;
 
+            string outputDir = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             try
             {
                 // ==========================================
@@ -50,7 +51,7 @@ namespace MyRevitExtractor
                 string addinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 string fallbackDir = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
                 string configPath = Path.Combine(addinDir ?? fallbackDir, "config.json");
-                string outputDir = fallbackDir;
+                outputDir = fallbackDir;
                 string gltfName = "model.gltf";
                 string semanticTwinJsonName = "semantic_twin.json";
                 if (File.Exists(configPath))
@@ -196,8 +197,8 @@ namespace MyRevitExtractor
                 // Revit (X, Y, Z) ===> Web (X, Z, -Y)
                 // 이렇게 하면 건물이 벌떡 일어섭니다.
                 double newX = p.X * scale;
-                double newY = p.Z * scale;      // Revit의 높이(Z)를 웹의 높이(Y)로
-                double newZ = -p.Y * scale;     // Revit의 북쪽(Y)을 웹의 깊이(-Z)로
+                double newY = p.Y * scale;      // Revit의 높이(Z)를 웹의 높이(Y)로
+                double newZ = p.Z * scale;     // Revit의 북쪽(Y)을 웹의 깊이(-Z)로
 
                 _writer.WriteLine($"v {newX} {newY} {newZ}");
             }

@@ -13,9 +13,9 @@ Revit 모델(RVT)을 자동으로 추출하여, 웹상에서 가볍게 시각화
 
 ```
 📦 DTCustomEngine
-├── 📄 config.json      # ★ 출력 파일명·Revit 경로 등 설정 (이 파일만 수정하면 됨)
-├── 📂 RevitAddin       # C# Revit 애드인 소스 코드 (Visual Studio 솔루션)
-├── 📂 Automation       # 파이썬 자동화 스크립트 (pipeline.py)
+├── 📄 config.json      # ★ 출력 경로·Revit 경로·빌드 솔루션 경로 등 (이 파일만 수정하면 됨)
+├── 📂 RevitAddin       # C# Revit 애드인 (HelloRevit.slnx — dotnet build / pipeline으로 빌드)
+├── 📂 Automation       # 파이썬 자동화 스크립트 (pipeline.py: 빌드 → Revit 실행 → 결과 확인)
 ├── 📂 WebViewer        # 웹 뷰어 (index.html)
 │   └── 📂 models       # 변환된 glTF, JSON 파일이 저장되는 곳 (gitignore 처리됨)
 └── 📂 SampleModels     # 테스트용 Revit 샘플 파일 (.rvt)
@@ -23,13 +23,14 @@ Revit 모델(RVT)을 자동으로 추출하여, 웹상에서 가볍게 시각화
 
 ### ⚙️ 설정 변경 (config.json)
 **파일 경로나 출력 파일 이름을 바꾸고 싶으면 프로젝트 루트의 `config.json`만 수정하면 됩니다.**  
-Revit 실행 경로, 대상 RVT 경로, glTF/JSON 출력 파일명 등이 한 곳에 정의되어 있으며, 파이프라인·애드인·웹 뷰어가 이 설정을 공유합니다.
+`revit`(실행 경로·대상 RVT), `output`(출력 폴더·glTF/JSON 파일명), `build.solutionPath`(C# 솔루션 경로, 예: `RevitAddin/HelloRevit/HelloRevit.slnx`) 등이 한 곳에 정의되어 있으며, 파이프라인·애드인·웹 뷰어가 이 설정을 공유합니다.
 
 ## ✅ Prerequisites
 이 프로젝트를 실행하기 위해 다음 환경이 필요합니다.
 - **Autodesk Revit 2024** (필수)
-- **Visual Studio 2022** (.NET Framework 4.8 개발 환경)
+- **.NET SDK** (dotnet CLI — `dotnet build`로 C# 애드인 빌드용, Visual Studio 없이 파이프라인 빌드 가능)
 - **Python 3.9+**
+- **Visual Studio 2022** (선택) — 참조 경로 수정 등이 필요할 때만 사용
 
 ## ⚙️ Setup & Installation
 
@@ -41,14 +42,7 @@ pip install -r requirements.txt
 ```
 
 ### 2. 라이브러리 참조 설정 (Check References)
-이 프로젝트는 Revit API를 참조합니다. 처음 열었을 때 참조 경로가 깨져있다면 다시 연결해야 합니다.
-
-1. Visual Studio에서 `RevitAddin/HelloRevit.sln`을 엽니다.
-2. **참조(References)** 우클릭 > **참조 추가(Add Reference)**
-3. Revit 2024 설치 경로(`C:\Program Files\Autodesk\Revit 2024\`)에서 아래 두 파일을 추가합니다.
-   - `RevitAPI.dll`
-   - `RevitAPIUI.dll`
-4. **★중요 설정:** 추가된 두 파일의 속성(Properties) 창에서 **로컬 복사(Copy Local)** 값을 **False**로 변경합니다. (빌드 오류 방지용)
+이 프로젝트는 Revit API를 참조합니다. `.csproj`에 이미 Revit 2024 기본 경로(`C:\Program Files\Autodesk\Revit 2024\`)가 설정되어 있습니다. Revit을 다른 경로에 설치했다면 `RevitAddin/HelloRevit/HelloRevit/HelloRevit.csproj`의 `HintPath`를 수정하세요. Visual Studio에서 수동으로 바꾸려면 `RevitAddin/HelloRevit/HelloRevit.slnx`를 열고, 참조(References)에서 `RevitAPI.dll`, `RevitAPIUI.dll` 경로를 추가·수정한 뒤 **로컬 복사(Copy Local): False**로 두면 됩니다.
 
 ### 3. 애드인 등록 (Register Add-in - 최초 1회)
 Revit이 빌드된 DLL을 인식할 수 있도록 `.addin` 매니페스트 파일을 연결합니다. **이 과정은 한 번만 수행하면 됩니다.**
@@ -79,8 +73,7 @@ Revit이 빌드된 DLL을 인식할 수 있도록 `.addin` 매니페스트 파�
    - (참고: ProgramData 폴더는 숨겨져 있을 수 있습니다.)
 
 ### 4. 빌드 (Build)
-1. 상단 메뉴에서 **빌드(Build) > 솔루션 빌드(Build Solution)**를 클릭합니다. (단축키: `Ctrl + Shift + B`)
-2. 이제 Revit을 실행하면 자동으로 플러그인이 로드됩니다.
+**Visual Studio에서 별도로 빌드할 필요 없습니다.** 아래 **How to Run**에서 `python Automation/pipeline.py`를 실행하면, 파이프라인이 먼저 `dotnet build`로 C# 애드인을 빌드한 뒤 Revit을 실행합니다. `.cs` 파일만 수정했다면 파이프라인을 다시 실행하면 자동으로 최신 코드가 빌드·반영됩니다.
 
 ### 5. 모델 추가
 - `SampleModels` 디렉터리에 `.rvt` 파일을 두거나, 원하는 위치에 샘플 `.rvt` 파일을 둡니다.
@@ -89,10 +82,10 @@ Revit이 빌드된 DLL을 인식할 수 있도록 `.addin` 매니페스트 파�
 ## 🚀 How to Run
 
 ### 1. 파이프라인 실행
-파이썬 스크립트가 Revit을 '유령 모드'로 실행하여 데이터를 추출합니다.
+파이썬 스크립트가 **먼저 C# 애드인을 `dotnet build`로 빌드**한 뒤, Revit을 '유령 모드'로 실행하여 데이터를 추출합니다. `.cs` 수정 후 Visual Studio에서 빌드할 필요 없이, 파이프라인만 다시 실행하면 됩니다.
 
-1. `config.json` 내부의 설정 변수들을 본인 환경에 맞게 수정합니다.
-2. 스크립트 실행:
+1. `config.json` 내부의 설정 변수들을 본인 환경에 맞게 수정합니다. (솔루션 경로는 `build.solutionPath`: `RevitAddin/HelloRevit/HelloRevit.slnx` 등)
+2. 프로젝트 루트 또는 `Automation` 폴더에서 스크립트 실행:
    ```bash
    python Automation/pipeline.py
    ```
@@ -107,16 +100,4 @@ Revit이 빌드된 DLL을 인식할 수 있도록 `.addin` 매니페스트 파�
 
 ## ❓ 트러블슈팅 (Troubleshooting)
 **1. 빌드 시 "참조를 찾을 수 없습니다" 오류가 뜬다면?**
-사용자의 Revit 설치 경로가 기본 경로와 다를 수 있습니다.
-1. 솔루션 탐색기에서 **참조(References)** 하위의 `RevitAPI`, `RevitAPIUI`에 노란색 경고등(⚠️)이 있는지 확인합니다.
-2. 경고가 있다면 우클릭 후 **제거(Remove)**합니다.
-3. **참조 추가(Add Reference)**를 눌러 본인의 Revit 설치 경로(보통 `C:\Program Files\Autodesk\Revit 2024`)에서 `RevitAPI.dll`, `RevitAPIUI.dll`을 다시 추가하세요.
-4. 두 파일의 속성에서 **로컬 복사(Copy Local): False** 설정을 잊지 마세요.
-
-**2. 빌드 시 "프로세서 아키텍처 MSIL과 RevitAPI 참조의 AMD64가 일치하지 않습니다" 경고가 뜬다면?**
-- **원인:** Revit은 64비트(AMD64) 전용 프로그램인데, 프로젝트가 Any CPU(MSIL)로 설정되어 있어 발생합니다. "Revit은 64비트 전용인데, 프로젝트를 범용(Any CPU)으로 빌드하고 있다"는 의미의 경고입니다. 무시해도 실행되는 경우가 많지만, x64로 맞추는 것이 권장됩니다.
-- **해결 방법:** 프로젝트 대상을 **x64**로 설정합니다.
-  1. Visual Studio 상단 메뉴에서 **[빌드(Build)]** → **[구성 관리자(Configuration Manager)]**를 클릭합니다. (또는 상단 툴바의 Debug 옆 **Any CPU** 드롭다운 → **[구성 관리자...]** 선택)
-  2. **활성 솔루션 플랫폼(Active solution platform)** 드롭다운을 클릭 후 **\<새로 만들기...\>**를 선택합니다.
-  3. **새 플랫폼(New platform)**에서 **x64**를 선택하고, '다음에서 설정 복사'는 **Any CPU**로 둔 뒤 **[확인]**을 누릅니다.
-  4. 구성 관리자를 닫고, 상단 툴바가 **Debug / x64**로 바뀌었는지 확인한 뒤 **[빌드]** → **[솔루션 다시 빌드(Rebuild Solution)]**를 실행합니다.
+Revit 설치 경로가 기본 경로와 다를 수 있습니다. `RevitAddin/HelloRevit/HelloRevit/HelloRevit.csproj`를 열어 `<Reference>`의 `HintPath`를 본인 Revit 경로(예: `C:\Program Files\Autodesk\Revit 2024\`)로 수정하세요. Visual Studio를 쓰는 경우에는 `RevitAddin/HelloRevit/HelloRevit.slnx`를 열고 참조(References)에서 `RevitAPI.dll`, `RevitAPIUI.dll` 경로를 추가·수정한 뒤 **로컬 복사(Copy Local): False**로 두면 됩니다.
