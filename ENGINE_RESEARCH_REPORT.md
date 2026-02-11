@@ -33,12 +33,15 @@
     └── 📂 models       # 변환된 glTF, JSON 자동 저장소
 ```
 
-
 ### 2.4. 작동 흐름 (Workflow)
-전체 파이프라인은 **'실행 → 추출 → 저장 → 시각화'**의 단계로 자동 수행됩니다.
+전체 파이프라인은 **'실행 → 추출 → 저장 → 시각화'**의 단계로 자동 수행됩니다. (아래는 실제 실행 과정 3배속 영상)
+
+
+https://github.com/user-attachments/assets/9dc842a3-54c6-40e3-aa6e-5bed085a27fe
+
 
 1.  **Pipeline Initiate:** 개발자가 터미널에서 파이썬 자동화 스크립트(`python pipeline.py`)를 실행합니다.
-2.  **Revit Execution:** 스크립트가 `Revit.exe`를 실행하고, 로딩 중 발생하는 보안 팝업 등을 자동으로 처리하여(Auto-click) 애드인 로드 환경을 조성합니다.
+2.  **Revit Execution:** 스크립트가 rvt 모델을 가지고 `Revit.exe`를 실행하고, 로딩 중 발생하는 보안 팝업 등을 자동으로 처리하여(Auto-click) 애드인 로드 환경을 조성합니다.
 3.  **Data Extraction:** Revit 구동 직후 자체 개발한 애드인(`AutoRunner`)이 트리거되어, 3D 형상 정보는 **glTF**로, 속성 정보는 **JSON**으로 분리 추출합니다.
 4.  **Artifact Storage:** 추출된 결과물은 `config.json`에 정의된 경로인 `WebViewer/models` 디렉터리에 자동으로 저장됩니다.
 5.  **Visualization:** 웹 뷰어(Three.js)가 생성된 최신 모델 파일을 로드하여 브라우저상에 즉시 시각화합니다.
