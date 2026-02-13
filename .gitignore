@@ -38,3 +38,7 @@ Thumbs.db
 packages/
 **/packages/
 *.nupkg
+
+node_modules/
+.cursor/
+.heymark/
